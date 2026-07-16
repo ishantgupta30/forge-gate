@@ -12,3 +12,4 @@ torch
 open-clip-torch
 numpy
 requests
+python-multipart
