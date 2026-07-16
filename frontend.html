@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge Gate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1b1815;
+    --bg-panel: #242019;
+    --bg-panel-2: #2c2620;
+    --ink: #f2ebdd;
+    --ink-dim: #9c9284;
+    --ember: #ff5a1f;
+    --ember-dim: #c94517;
+    --quench: #46c2b9;
+    --alert: #e5484d;
+    --review: #e8b54a;
+    --line: #3a342c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 56px;
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  .sub {
+    color: var(--ink-dim);
+    font-size: 15px;
+    margin: 0 0 40px;
+    max-width: 46ch;
+  }
+  .ticket {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px;
+    position: relative;
+  }
+  .ticket::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 4px;
+    background: var(--ember);
+  }
+  label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 0 0 6px;
+  }
+  .field { margin-bottom: 18px; }
+  input[type=text], textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    padding: 10px 12px;
+    resize: vertical;
+  }
+  input[type=text]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--ember);
+  }
+  .toggle-btn {
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 18px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .toggle-btn:hover { color: var(--ink); }
+  #styleGuideField { display: none; }
+  button[type=submit] {
+    width: 100%;
+    background: var(--ember);
+    color: #1b1815;
+    border: none;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button[type=submit]:hover { background: var(--ember-dim); }
+  button[type=submit]:disabled {
+    background: var(--line);
+    color: var(--ink-dim);
+    cursor: not-allowed;
+  }
+  .result { margin-top: 40px; }
+  .status-line {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .status-word {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+  }
+  .status-word.approved { color: var(--quench); }
+  .status-word.needs_human_review { color: var(--review); }
+  .status-word.rejected { color: var(--alert); }
+  .job-id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .timeline { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+  .attempt {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 16px;
+  }
+  .attempt img {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .attempt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .attempt-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .stamp {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border: 2px solid currentColor;
+    border-radius: 2px;
+    transform: rotate(-4deg);
+    display: inline-block;
+  }
+  .stamp.approved { color: var(--quench); }
+  .stamp.rejected { color: var(--alert); }
+  .prompt-used {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    margin: 0 0 10px;
+  }
+  .note {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0 0 4px;
+    padding-left: 10px;
+    border-left: 2px solid var(--line);
+  }
+  .note b { color: var(--ink); font-weight: 600; }
+  .note.fail { border-left-color: var(--alert); }
+  .note.pass { border-left-color: var(--quench); }
+  .meta-row {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 8px;
+  }
+  .error-box {
+    margin-top: 24px;
+    border: 1px solid var(--alert);
+    background: rgba(229,72,77,0.08);
+    color: var(--alert);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+  .loading {
+    margin-top: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    margin-left: 8px;
+    background: var(--ember);
+    border-radius: 50%;
+    animation: pulse 1s infinite ease-in-out;
+    vertical-align: middle;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
+  @media (max-width: 520px) {
+    h1 { font-size: 40px; }
+    .attempt { grid-template-columns: 1fr; }
+    .attempt img { width: 100%; height: 160px; }
+  }
+  .style-guide-banner {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    background: var(--bg-panel-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin: 16px 0 0;
+  }
+  .style-guide-banner b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Asset Approval Pipeline</p>
+  <h1>Forge Gate</h1>
+  <p class="sub">Submit a prompt. Every candidate is generated, checked against the studio's style guide, screened for duplicates, and stamped — pass or fail, with a reason.</p>
+
+  <div class="ticket">
+    <form id="jobForm">
+      <div class="field">
+        <label for="studioId">Studio ID</label>
+        <input type="text" id="studioId" value="test-studio" required>
+      </div>
+      <div class="field">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" rows="2" required>a single red apple on a white background</textarea>
+      </div>
+      <button type="button" class="toggle-btn" id="styleToggle">+ set a style guide for this studio</button>
+      <div class="field" id="styleGuideField">
+        <label for="styleGuide">Style guide (free text)</label>
+        <textarea id="styleGuide" rows="2" placeholder="e.g. black and white pencil sketch, no color"></textarea>
+      </div>
+      <button type="submit" id="submitBtn">Submit for review</button>
+    </form>
+  </div>
+
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+const form = document.getElementById('jobForm');
+const submitBtn = document.getElementById('submitBtn');
+const resultEl = document.getElementById('result');
+const styleToggle = document.getElementById('styleToggle');
+const styleGuideField = document.getElementById('styleGuideField');
+
+styleToggle.addEventListener('click', () => {
+  const open = styleGuideField.style.display === 'block';
+  styleGuideField.style.display = open ? 'none' : 'block';
+  styleToggle.textContent = open ? '+ set a style guide for this studio' : '– hide style guide';
+});
+
+function statusLabel(status) {
+  if (status === 'approved') return 'Approved';
+  if (status === 'needs_human_review') return 'Needs human review';
+  return status;
+}
+
+function renderAttempt(a) {
+  const passed = a.style_check_passed && a.duplicate_check_passed;
+  const stampClass = passed ? 'approved' : 'rejected';
+  const stampText = passed ? 'Approved' : 'Rejected';
+
+  return `
+    <div class="attempt">
+      <img src="${API}/asset-proxy?url=${encodeURIComponent(a.asset_url)}" alt="attempt ${a.attempt_number}" loading="lazy">
+      <div>
+        <div class="attempt-head">
+          <span class="attempt-num">Attempt ${a.attempt_number} · ${a.model}</span>
+          <span class="stamp ${stampClass}">${stampText}</span>
+        </div>
+        <p class="prompt-used">"${a.prompt_used}"</p>
+        <p class="note ${a.style_check_passed ? 'pass' : 'fail'}">
+          <b>Style —</b> ${a.style_check_reason}
+        </p>
+        <p class="note ${a.duplicate_check_passed ? 'pass' : 'fail'}">
+          <b>Duplicate —</b> ${a.duplicate_check_passed ? 'no match found' : 'matches an approved exemplar'}
+          <span class="meta-row">similarity: ${a.duplicate_check_similarity.toFixed(3)}</span>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+async function pollTimeline(jobId) {
+  const res = await fetch(`${API}/jobs/${jobId}/timeline`);
+  if (!res.ok) throw new Error(`Timeline fetch failed (${res.status})`);
+  return res.json();
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  const studioId = document.getElementById('studioId').value.trim();
+  const prompt = document.getElementById('prompt').value.trim();
+  const styleGuide = document.getElementById('styleGuide').value.trim();
+
+  resultEl.innerHTML = '<p class="loading" id="stageText">Generating candidate</p>';
+  const stages = ['Generating candidate', 'Checking style guide', 'Screening for duplicates'];
+  let stageIdx = 0;
+  const stageTimer = setInterval(() => {
+    stageIdx = Math.min(stageIdx + 1, stages.length - 1);
+    const el = document.getElementById('stageText');
+    if (el) el.textContent = stages[stageIdx];
+  }, 2200);
+
+  try {
+    if (styleGuide) {
+      const sgForm = new URLSearchParams();
+      sgForm.append('description', styleGuide);
+      await fetch(`${API}/studios/${encodeURIComponent(studioId)}/references/style-guide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: sgForm
+      });
+    }
+
+    const jobRes = await fetch(`${API}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studio_id: studioId, prompt })
+    });
+    if (!jobRes.ok) throw new Error(`Job creation failed (${jobRes.status})`);
+    const job = await jobRes.json();
+
+    const timeline = await pollTimeline(job.job_id);
+
+    let styleGuideInUse = '';
+    try {
+      const refsRes = await fetch(`${API}/studios/${encodeURIComponent(studioId)}/references`);
+      if (refsRes.ok) {
+        const refs = await refsRes.json();
+        const sg = refs.find(r => r.label === 'style_guide');
+        if (sg) styleGuideInUse = sg.b2_url;
+      }
+    } catch (e) { /* non-fatal, just skip the banner */ }
+
+    resultEl.innerHTML = `
+      <div class="status-line">
+        <span class="status-word ${job.status}">${statusLabel(job.status)}</span>
+        <span class="job-id">job ${job.job_id}</span>
+      </div>
+      ${styleGuideInUse ? `<p class="style-guide-banner"><b>Checked against:</b> "${styleGuideInUse}"</p>` : ''}
+      <div class="timeline">
+        ${timeline.map(renderAttempt).join('')}
+      </div>
+    `;
+  } catch (err) {
+    resultEl.innerHTML = `<div class="error-box">${err.message}. Is the Forge Gate server running at ${API}?</div>`;
+  } finally {
+    clearInterval(stageTimer);
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit for review';
+  }
+});
+</script>
+</body>
+</html>

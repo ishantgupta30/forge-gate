@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+*.db
+.DS_Store
+__pycache__/
+*.pyc
+files.zip
+files (1).zip
+files (1)/
