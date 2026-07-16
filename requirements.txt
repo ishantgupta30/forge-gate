@@ -8,8 +8,7 @@ genblaze-core
 genblaze-s3
 groq
 Pillow
-torch
-open-clip-torch
 numpy
 requests
 python-multipart
+imagehash

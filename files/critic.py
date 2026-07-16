@@ -62,8 +62,9 @@ def check_style_consistency(candidate_url: str, style_guide_description: str) ->
     return {"passed": bool(parsed["match"]), "reason": parsed["reason"]}
 
 
-def embed_image(image_url: str) -> np.ndarray:
-    """Local, keyless CLIP embedding — see embeddings.py. No API key required."""
+def embed_image(image_url: str) -> dict:
+    """Local, keyless visual signature (hash + color histogram) — see
+    embeddings.py. No API key, no heavy ML model required."""
     return embed_image_from_url(image_url)
 
 
@@ -72,14 +73,11 @@ def check_duplicate(candidate_url: str, approved_exemplar_embeddings: list[tuple
     approved_exemplar_embeddings: list of (asset_id, embedding) for every
     already-approved exemplar for this studio.
     """
-    candidate_vec = embed_image(candidate_url)
+    candidate_sig = embed_image(candidate_url)
 
     best_match_id, best_similarity = None, 0.0
-    for asset_id, exemplar_vec in approved_exemplar_embeddings:
-        similarity = float(
-            np.dot(candidate_vec, exemplar_vec)
-            / (np.linalg.norm(candidate_vec) * np.linalg.norm(exemplar_vec))
-        )
+    for asset_id, exemplar_sig in approved_exemplar_embeddings:
+        similarity = visual_similarity(candidate_sig, exemplar_sig)
         if similarity > best_similarity:
             best_match_id, best_similarity = asset_id, similarity
 

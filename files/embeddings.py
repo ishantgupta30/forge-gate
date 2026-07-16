@@ -1,30 +1,21 @@
 """
-Image embeddings for duplicate detection — Feature 2b.
-Deliberately keyless: this runs an open-source CLIP model locally via
-open_clip, so duplicate detection works today with zero API keys and zero
-GMI/OpenAI dependency.
-Model: ViT-B-32 / openai pretrained weights (~350MB, downloads once, then
-cached). CPU inference is fine at hackathon scale.
+Visual similarity for duplicate detection — Feature 2b.
+
+Deliberately lightweight: no torch/open_clip, so this runs comfortably on
+free-tier hosting (512MB-1GB RAM) instead of needing a paid plan. Uses a
+combination of perceptual hash, difference hash, and a coarse color
+histogram — good at catching near-duplicates, re-crops, recolors, and
+minor edits of the *same* image. This is honestly "visual similarity,"
+not semantic understanding — it won't recognize the same character
+redrawn in a different pose. A CLIP-based embedding model is the natural
+upgrade path if hosting RAM headroom allows for it later.
 """
 import io
 import os
-import functools
 import numpy as np
 import requests
 from PIL import Image
-
-_MODEL_NAME = "ViT-B-32"
-_PRETRAINED = "openai"
-
-
-@functools.lru_cache(maxsize=1)
-def _load_model():
-    import open_clip
-    import torch
-
-    model, _, preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
-    model.eval()
-    return model, preprocess, torch
+import imagehash
 
 
 def _get_b2_client():
@@ -57,25 +48,59 @@ def _load_image(image_url_or_path: str) -> Image.Image:
     return Image.open(image_url_or_path).convert("RGB")
 
 
-def embed_image_from_url(image_url: str) -> np.ndarray:
-    model, preprocess, torch = _load_model()
+def _color_histogram(image: Image.Image, bins: int = 8) -> np.ndarray:
+    """Coarse RGB histogram, flattened and L2-normalized — cheap, catches
+    gross color/composition differences that hashing alone can miss."""
+    small = image.resize((64, 64))
+    arr = np.asarray(small).reshape(-1, 3)
+    hist, _ = np.histogramdd(arr, bins=(bins, bins, bins), range=((0, 256),) * 3)
+    hist = hist.flatten().astype(np.float32)
+    norm = np.linalg.norm(hist)
+    return hist / norm if norm > 0 else hist
+
+
+def embed_image_from_url(image_url: str) -> dict:
+    """Returns a combined visual signature: perceptual hash, difference
+    hash, and a color histogram vector. Used as a single unit by
+    check_duplicate's similarity function."""
     image = _load_image(image_url)
-    tensor = preprocess(image).unsqueeze(0)
-
-    with torch.no_grad():
-        features = model.encode_image(tensor)
-        features = features / features.norm(dim=-1, keepdim=True)
-
-    return features.squeeze(0).numpy()
+    return {
+        "phash": imagehash.phash(image),
+        "dhash": imagehash.dhash(image),
+        "hist": _color_histogram(image),
+    }
 
 
-def embedding_to_json(vec: np.ndarray) -> str:
+def visual_similarity(sig_a: dict, sig_b: dict) -> float:
+    """Combines hash distance and histogram similarity into one score in
+    [0, 1], where 1.0 means visually identical."""
+    max_hash_bits = len(sig_a["phash"].hash) ** 2  # 8x8 hash -> 64 bits
+    phash_sim = 1 - (sig_a["phash"] - sig_b["phash"]) / max_hash_bits
+    dhash_sim = 1 - (sig_a["dhash"] - sig_b["dhash"]) / max_hash_bits
+
+    hist_a, hist_b = sig_a["hist"], sig_b["hist"]
+    hist_sim = float(np.dot(hist_a, hist_b))  # both L2-normalized -> cosine sim
+
+    # Weighted toward hashing (structure) with histogram as a secondary signal.
+    return 0.4 * phash_sim + 0.4 * dhash_sim + 0.2 * hist_sim
+
+
+def embedding_to_json(sig: dict) -> str:
     import json
 
-    return json.dumps(vec.tolist())
+    return json.dumps({
+        "phash": str(sig["phash"]),
+        "dhash": str(sig["dhash"]),
+        "hist": sig["hist"].tolist(),
+    })
 
 
-def embedding_from_json(s: str) -> np.ndarray:
+def embedding_from_json(s: str) -> dict:
     import json
 
-    return np.array(json.loads(s), dtype=np.float32)
+    data = json.loads(s)
+    return {
+        "phash": imagehash.hex_to_hash(data["phash"]),
+        "dhash": imagehash.hex_to_hash(data["dhash"]),
+        "hist": np.array(data["hist"], dtype=np.float32),
+    }

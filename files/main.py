@@ -24,14 +24,6 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Forge Gate")
 
 
-@app.on_event("startup")
-def _preload_clip_model():
-    """Load the CLIP model once at container startup instead of on the
-    first request — avoids a slow first request that can exceed the
-    platform's reverse-proxy timeout."""
-    from .embeddings import _load_model
-    _load_model()
-
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
