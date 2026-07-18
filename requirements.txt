@@ -12,3 +12,4 @@ numpy
 requests
 python-multipart
 imagehash
+psycopg2-binary
