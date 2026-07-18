@@ -1,5 +1,11 @@
+import os
 import json
-from fastapi import FastAPI, Depends, UploadFile, File, Form, HTTPException
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, Depends, UploadFile, File, Form, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -8,29 +14,29 @@ from .models import Job, Attempt, ReferenceAsset
 from .decision import run_job
 from .storage import upload_reference_asset
 from .embeddings import embed_image_from_url, embedding_to_json, embedding_from_json
-from dotenv import load_dotenv
-load_dotenv()
-
-from dotenv import load_dotenv
-load_dotenv()
-
-import json
-from fastapi import FastAPI, Depends, UploadFile, File, Form, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Forge Gate")
 
-
-from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# --- Shared-secret auth -----------------------------------------------------
+# Opt-in: if API_SHARED_SECRET is unset (e.g. local dev), every request is
+# allowed through, so this never blocks `uvicorn --reload` out of the box.
+# Set API_SHARED_SECRET in production (Railway env var) and pass the same
+# value as X-API-Key from the frontend to lock down write endpoints.
+def require_api_key(x_api_key: str | None = Header(default=None)):
+    expected = os.getenv("API_SHARED_SECRET")
+    if expected and x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
+    return True
 
 
 class CreateJobRequest(BaseModel):
@@ -59,7 +65,12 @@ def _load_studio_references(db: Session, studio_id: str):
 
 
 @app.post("/studios/{studio_id}/references/style-guide")
-def upload_style_guide(studio_id: str, description: str = Form(...), db: Session = Depends(get_db)):
+def upload_style_guide(
+    studio_id: str,
+    description: str = Form(...),
+    db: Session = Depends(get_db),
+    _auth: bool = Depends(require_api_key),
+):
     """Free-text style guide, e.g. 'cel-shaded, muted earth tones, rounded
     silhouettes, no visible outlines thicker than 2px.' Stored directly
     (no image), keyed off label='style_guide' so it's easy to find later."""
@@ -86,6 +97,7 @@ async def upload_exemplar(
     label: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _auth: bool = Depends(require_api_key),
 ):
     """Studio uploads an already-approved asset to guard against future
     near-duplicates. We upload it to B2, embed it once here (not on every
@@ -115,7 +127,7 @@ def list_references(studio_id: str, db: Session = Depends(get_db)):
 
 
 @app.post("/jobs")
-def create_job(req: CreateJobRequest, db: Session = Depends(get_db)):
+def create_job(req: CreateJobRequest, db: Session = Depends(get_db), _auth: bool = Depends(require_api_key)):
     job = Job(studio_id=req.studio_id, original_prompt=req.prompt)
     db.add(job)
     db.commit()
@@ -160,12 +172,9 @@ def asset_proxy(url: str):
 @app.get("/jobs/{job_id}")
 def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
-    return {
-        "id": job.id,
-        "status": job.status,
-        "original_prompt": job.original_prompt,
-        "attempt_count": len(job.attempts),
-    }
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return 
 
 
 @app.get("/jobs/{job_id}/timeline")

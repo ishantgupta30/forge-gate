@@ -17,7 +17,7 @@ from groq import Groq
 from .embeddings import embed_image_from_url, _load_image
 
 DUPLICATE_THRESHOLD = 0.92
-_STYLE_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+_STYLE_MODEL = "qwen/qwen3.6-27b"
 
 
 def _image_to_data_url(candidate_url: str) -> str:

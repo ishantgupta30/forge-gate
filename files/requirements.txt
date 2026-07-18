@@ -1,22 +1,6 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-sqlalchemy==2.0.35
-python-dotenv==1.0.1
-pydantic==2.9.2
-python-multipart==0.0.9   # required for FastAPI File()/Form() uploads
-boto3==1.35.24            # raw B2 uploads for reference assets (outside Genblaze's sink)
-
-# Genblaze — core + B2 storage + GMI Cloud provider adapter (free hackathon credits)
-genblaze-core
-genblaze-s3
-genblaze-gmicloud
-# Fallback provider — swap for whichever second provider you get access to
-genblaze-replicate
-
-# Critic: local, keyless CLIP embeddings for duplicate detection
-numpy==2.1.1
-torch==2.4.1
-open_clip_torch==2.26.1
-Pillow==10.4.0
-requests==2.32.3
-httpx
+# Deprecated: use the root-level requirements.txt instead.
+# This file previously listed torch/open_clip/genblaze-gmicloud/genblaze-replicate,
+# none of which the current code (imagehash-based duplicate check, Pollinations +
+# Hugging Face providers) actually uses. Removed to avoid a misleading/broken
+# `pip install` for anyone reading files/ directly.
+-r ../requirements.txt
