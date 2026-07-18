@@ -169,7 +169,10 @@
     border-radius: 3px;
     border: 1px solid var(--line);
     background: var(--bg);
+    cursor: pointer;
+    transition: opacity 0.15s ease;
   }
+  .attempt img:hover { opacity: 0.85; }
   .attempt-head {
     display: flex;
     align-items: center;
@@ -261,6 +264,62 @@
     margin: 16px 0 0;
   }
   .style-guide-banner b { color: var(--ink); }
+
+  /* Lightbox */
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .lightbox-overlay.open { display: flex; }
+  .lightbox-box {
+    max-width: min(720px, 92vw);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+  .lightbox-box img {
+    max-width: 100%;
+    max-height: 68vh;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  .lightbox-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .lightbox-actions button {
+    background: var(--bg-panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .lightbox-actions button:hover {
+    background: var(--bg-panel-2);
+    border-color: var(--ember);
+  }
+  .lightbox-actions button.close-btn {
+    color: var(--ember);
+    border-color: var(--ember-dim);
+  }
 </style>
 </head>
 <body>
@@ -291,6 +350,17 @@
   <div class="result" id="result"></div>
 </div>
 
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-box">
+    <img id="lightboxImg" src="" alt="Enlarged attempt image">
+    <div class="lightbox-actions">
+      <button type="button" id="downloadPngBtn">Download PNG</button>
+      <button type="button" id="downloadJpegBtn">Download JPEG</button>
+      <button type="button" class="close-btn" id="closeLightboxBtn">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'https://web-production-3941b.up.railway.app';
 // Only needed if the backend has API_SHARED_SECRET set (see files/main.py).
@@ -303,11 +373,67 @@ const resultEl = document.getElementById('result');
 const styleToggle = document.getElementById('styleToggle');
 const styleGuideField = document.getElementById('styleGuideField');
 
+const lightboxOverlay = document.getElementById('lightboxOverlay');
+const lightboxImg = document.getElementById('lightboxImg');
+const downloadPngBtn = document.getElementById('downloadPngBtn');
+const downloadJpegBtn = document.getElementById('downloadJpegBtn');
+const closeLightboxBtn = document.getElementById('closeLightboxBtn');
+
 styleToggle.addEventListener('click', () => {
   const open = styleGuideField.style.display === 'block';
   styleGuideField.style.display = open ? 'none' : 'block';
   styleToggle.textContent = open ? '+ set a style guide for this studio' : '– hide style guide';
 });
+
+function openLightbox(url) {
+  lightboxImg.src = url;
+  lightboxOverlay.classList.add('open');
+}
+
+function closeLightbox() {
+  lightboxOverlay.classList.remove('open');
+  lightboxImg.src = '';
+}
+
+closeLightboxBtn.addEventListener('click', closeLightbox);
+lightboxOverlay.addEventListener('click', (e) => {
+  if (e.target === lightboxOverlay) closeLightbox();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+function downloadImageAs(format) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (format === 'jpeg') {
+      // JPEG has no transparency channel — flatten onto white first.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0);
+    const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const dataUrl = canvas.toDataURL(mime, 0.95);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `forge-gate-asset.${format === 'jpeg' ? 'jpg' : 'png'}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+  img.onerror = () => {
+    alert('Could not load the image for download. Try opening it in a new tab instead.');
+  };
+  img.src = lightboxImg.src;
+}
+
+downloadPngBtn.addEventListener('click', () => downloadImageAs('png'));
+downloadJpegBtn.addEventListener('click', () => downloadImageAs('jpeg'));
 
 function statusLabel(status) {
   if (status === 'approved') return 'Approved';
@@ -319,10 +445,11 @@ function renderAttempt(a) {
   const passed = a.style_check_passed && a.duplicate_check_passed;
   const stampClass = passed ? 'approved' : 'rejected';
   const stampText = passed ? 'Approved' : 'Rejected';
+  const proxiedUrl = `${API}/asset-proxy?url=${encodeURIComponent(a.asset_url)}`;
 
   return `
     <div class="attempt">
-      <img src="${API}/asset-proxy?url=${encodeURIComponent(a.asset_url)}" alt="attempt ${a.attempt_number}" loading="lazy">
+      <img src="${proxiedUrl}" alt="attempt ${a.attempt_number}" loading="lazy" onclick="openLightbox('${proxiedUrl}')">
       <div>
         <div class="attempt-head">
           <span class="attempt-num">Attempt ${a.attempt_number} · ${a.model}</span>
