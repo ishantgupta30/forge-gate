@@ -20,10 +20,12 @@ Forge Gate generates game assets from a text prompt, checks each candidate again
 
 Nothing is a black box. The point isn't "does this look right" — it's "here's exactly why this passed or failed, and what happens next."
 
-## Architecture        
+## Architecture     
+
 Frontend (Netlify)
 │
 ▼
+
 FastAPI backend (Railway)
 │
 ├── Generation ── Pollinations (primary) → Hugging Face (fallback)
