@@ -174,7 +174,13 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return 
+    return {
+        "job_id": job.id,
+        "studio_id": job.studio_id,
+        "prompt": job.original_prompt,
+        "status": job.status,
+    }
+
 
 
 @app.get("/jobs/{job_id}/timeline")
