@@ -17,7 +17,11 @@ from .critic import check_style_consistency, check_duplicate, embed_image
 MAX_RETRY_ATTEMPTS = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))
 
 # Small, fixed, inspectable correction lists — NOT free-form "AI rewrites this."
-STYLE_FIX_SUFFIX = ", matching the studio's approved style guide exactly"
+STYLE_FIX_OPTIONS = [
+    ", matching the studio's approved style guide exactly",
+    ", with thick bold black outlines and bright saturated cel-shaded colors, no pastel tones",
+    ", strictly cel-shaded flat colors with heavy black ink outlines, vibrant and highly saturated",
+]
 DUPLICATE_FIX_OPTIONS = [
     ", different pose",
     ", different hair color",
@@ -28,7 +32,7 @@ DUPLICATE_FIX_OPTIONS = [
 def _next_prompt(base_prompt: str, style_failed: bool, duplicate_failed: bool, attempt_number: int) -> str:
     prompt = base_prompt
     if style_failed:
-        prompt += STYLE_FIX_SUFFIX
+        prompt += STYLE_FIX_OPTIONS[(attempt_number - 1) % len(STYLE_FIX_OPTIONS)]
     if duplicate_failed:
         prompt += DUPLICATE_FIX_OPTIONS[(attempt_number - 1) % len(DUPLICATE_FIX_OPTIONS)]
     return prompt

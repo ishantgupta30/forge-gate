@@ -293,6 +293,9 @@
 
 <script>
 const API = 'https://web-production-3941b.up.railway.app';
+// Only needed if the backend has API_SHARED_SECRET set (see files/main.py).
+// Leave empty for local dev / when the server has no secret configured.
+const API_KEY = '';
 
 const form = document.getElementById('jobForm');
 const submitBtn = document.getElementById('submitBtn');
@@ -368,14 +371,14 @@ form.addEventListener('submit', async (e) => {
       sgForm.append('description', styleGuide);
       await fetch(`${API}/studios/${encodeURIComponent(studioId)}/references/style-guide`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(API_KEY ? { 'X-API-Key': API_KEY } : {}) },
         body: sgForm
       });
     }
 
     const jobRes = await fetch(`${API}/jobs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'X-API-Key': API_KEY } : {}) },
       body: JSON.stringify({ studio_id: studioId, prompt })
     });
     if (!jobRes.ok) throw new Error(`Job creation failed (${jobRes.status})`);
